@@ -4,7 +4,18 @@ This project contains an experimental [`LD_PRELOAD` object](https://man7.org/lin
 
 ## Supported Runtimes
 
-* Java Virtual Machines by means of the [OpenTelemetry Java Instrumentation](https://github.com/open-telemetry/opentelemetry-java-instrumentation)
+Currently:
+
+* [Java Virtual Machines](#java-virtual-machine) by means of the [OpenTelemetry Java Instrumentation](https://github.com/open-telemetry/opentelemetry-java-instrumentation)
+
+Eventually (hopefully), all runtimes supported via OpenTelemetry in which the instrumentation can be injected at startup time (which oughta be more or less all those runtimes that are not compiled to binary):
+
+* Erlang (???) (Not sure about the feasibility of this one really)
+* .NET Core
+* Node.js
+* PHP
+* Python
+* Ruby
 
 ## Usage
 
