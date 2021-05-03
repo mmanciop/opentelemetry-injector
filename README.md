@@ -37,3 +37,8 @@ agent_path = '/opt/opentelemetry/opentelemetry-javaagent-all.jar'
 
 Why using [rust](https://www.rust-lang.org/) for an `LD_PRELOAD` object, rather than something more traditional like C?
 Well, rust has very nice memory management and the [redhook](https://crates.io/crates/redhook) crate to create `LD_PRELOAD` objects that makes me fret far less over catastrophic bugs this might introduce.
+
+## Support
+
+This is super-experimental and currently no support can be ensured.
+But please do let me know of issues by [opening one](../../issues) on GitHub.
