@@ -19,6 +19,21 @@ Eventually (hopefully), all runtimes supported via OpenTelemetry in which the in
 
 ## Usage
 
+### How it works
+
+This project works based on a simple principle, namely that OpenTelemetry is going to monitor your application if
+
+1. The necessary instrumentation is available on the filesystem running under your application
+2. You can activate the instrumentation _somehow_
+
+Now, (2) is actually possible in many runtimes via `environment variables`, e.g., `JAVA_TOOL_OPTIONS` or `NODE_OPTIONS` (in Node.js 8+).
+However, asking DevOps people to setup environment variables for their apps is a chore, so this project steps in by providing a consistent interface to ensure that the right variables are set for all supported runtimes providing one consistent API using `LD_PRELOAD`.
+
+In short, `LD_PRELOAD` is a way to _hijack_ the way most application runtimes (think of the Java Virtual Machine, the Node.js V8, etc.) _look up_ environment variables, which is mostly via the `getenv` API of LibC.
+The `LD_PRELOAD` object provided by building this repository does just that: it intercepts calls to `getenv` by runtimes, modifying the results for some runtime-specific environment variables to add what is needed to activate the OpenTelemetry instrumentation.
+
+Sounds like dark magic, but actually this technique has been used in the commercial APM space for the best part of a decade :-)
+
 ### Setup the LD_PRELOAD object
 
 There are two ways to install this `LD_PRELOAD` object so that your applications get automatically monitored with OpenTelemetry:
@@ -36,13 +51,16 @@ The OpenTelemetry injector needs a [TOML](https://github.com/toml-lang/toml) con
 
 #### Java Virtual Machine
 
-The `LD_PRELOAD` object needs to know where to find the [OpenTelemetry Java Instrumentation](https://github.com/open-telemetry/opentelemetry-java-instrumentation).
+The `LD_PRELOAD` object needs to know where to find the [OpenTelemetry Java Instrumentation](https://github.com/open-telemetry/opentelemetry-java-instrumentation), so that is can pass it via the `-javaagent:<agent_path>` startup argument via the `JAVA_TOOL_OPTIONS` environment variable.
+
 Add the following to the [configuration file](#configuration-file), adjusting the value of `jvm.agent_path` to your own setup:
 
 ```toml
 [jvm]
 agent_path = '/opt/opentelemetry/opentelemetry-javaagent-all.jar'
 ```
+
+If the file listed as `jvm.agent_path` does not exist, the `LD_PRELOAD` object will not modify the `JAVA_TOOL_OPTIONS` environment variable, but no further verification of the _content_ of the file will be performed.
 
 ## Development
 
