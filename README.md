@@ -46,6 +46,18 @@ agent_path = '/opt/opentelemetry/opentelemetry-javaagent-all.jar'
 
 ## Development
 
+### Build
+
+Assuming you have a working Rust setup, it is as simple as running the following from the root of the repository:
+
+```sh
+cargo build
+```
+
+The `LD_PRELOAD` object is going to be available at `<repository_root>/target/debug/libopentelemetry_injector.so`.
+
+### Why Rust
+
 Why using [rust](https://www.rust-lang.org/) for an `LD_PRELOAD` object, rather than something more traditional like C?
 Well, rust has very nice memory management and the [redhook](https://crates.io/crates/redhook) crate to create `LD_PRELOAD` objects that makes me fret far less over catastrophic bugs this might introduce.
 
