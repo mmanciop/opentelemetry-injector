@@ -1,0 +1,21 @@
+[package]
+name = "opentelemetry_injector"
+version = "0.1.0"
+authors = ["Michele Mancioppi <michele.mancioppi@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+libc = "0.2"
+log = "0.4.14"
+redhook = "2.0"
+serde = "1.0"
+serde_derive = "1.0"
+toml = "0.4.2"
+
+[dependencies.simple_logger]
+version = "1.11.0"
+default-features = false
+
+[lib]
+name = "opentelemetry_injector"
+crate_type = ["dylib"]

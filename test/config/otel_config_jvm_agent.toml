@@ -1,0 +1,2 @@
+[jvm]
+agent_path = '/home/michele/git/opentelemetry-injector/test/java/opentelemetry-javaagent-all.jar'

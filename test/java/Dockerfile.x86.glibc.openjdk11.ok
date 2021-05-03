@@ -1,0 +1,22 @@
+FROM ubuntu:latest AS opentelemetry-jvm-download
+
+RUN apt-get update; \
+    apt-get install -y curl
+
+RUN mkdir -p /opt/opentelemetry; curl -L --silent --fail --show-error https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.1.0/opentelemetry-javaagent-all.jar -o /opt/opentelemetry/opentelemetry-javaagent-all.jar
+
+FROM openjdk:11
+
+ADD ./test/java/app/target/java-test-app.jar /app/java-test-app.jar
+
+ADD ./target/debug/libopentelemetry_injector.so /test/otel_injector.so
+ENV LD_PRELOAD=/test/otel_injector.so
+
+ADD ./test/config/otel_config_jvm_agent.toml /test/otel_config.toml
+
+ENV OPENTELEMETRY_INJECTOR_DEBUG=true
+ENV OPENTELEMETRY_INJECTOR_CONFIGURATION=/test/otel_config.toml
+
+COPY --from=opentelemetry-jvm-download /opt/opentelemetry/opentelemetry-javaagent-all.jar /opt/opentelemetry/opentelemetry-javaagent-all.jar
+
+ENTRYPOINT [ "java", "-version" ]
