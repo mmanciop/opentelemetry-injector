@@ -17,6 +17,21 @@ Eventually (hopefully), all runtimes supported via OpenTelemetry in which the in
 * Python
 * Ruby
 
+## See it in action!
+
+```sh
+./demo/run
+```
+
+Then open `http://localhost:16686` (if you use `docker-machine` or similar, you'll have to adjust the hostname) in your browser to access the Jaeger deployed in Docker Compose and see the traces flow!
+
+Dependencies:
+
+* Rust build toolchain
+* Docker & Docker Compose
+* `dpkg-deb`
+* `bash`, `curl`, `libc`
+
 ## Usage
 
 ### How it works
@@ -76,8 +91,12 @@ The `LD_PRELOAD` object is going to be available at `<repository_root>/target/de
 
 ### Why Rust
 
-Why using [rust](https://www.rust-lang.org/) for an `LD_PRELOAD` object, rather than something more traditional like C?
-Well, rust has very nice memory management and the [redhook](https://crates.io/crates/redhook) crate to create `LD_PRELOAD` objects that makes me fret far less over catastrophic bugs this might introduce.
+Why using [Rust](https://www.rust-lang.org/) for an `LD_PRELOAD` object, rather than something more traditional like C?
+Well, Rust has very nice memory management and the [redhook](https://crates.io/crates/redhook) crate to create `LD_PRELOAD` objects that makes me fret far less over catastrophic bugs this project might introduce.
+
+## Limitations
+
+The runtime used by your applications needs to be dynamically linked to LibC for the `LD_PRELOAD` mechanic used in this project to work.
 
 ## Support
 

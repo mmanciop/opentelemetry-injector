@@ -1,0 +1,2 @@
+[jvm]
+agent_path = '/opt/opentelemetry/java/opentelemetry-javaagent-all.jar'
