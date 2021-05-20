@@ -39,7 +39,7 @@ Sounds like dark magic, but actually this technique has been used in the commerc
 There are two ways to install this `LD_PRELOAD` object so that your applications get automatically monitored with OpenTelemetry:
 
 * Set the `LD_PRELOAD` environment variable pointing to the file location of the `.so` object
-* Copy the `.so` object at `/etc/ld.so.preload`
+* Copy the path to this `.so` object into the `/etc/ld.so.preload` file
 
 Both installation methods can be conveniently done in Kubernets via [environment variables](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/) and [volume mounts](https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/) to your application pods.
 
