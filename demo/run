@@ -1,0 +1,14 @@
+#!/bin/env bash
+
+readonly script_dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+readonly project_dir=$(dirname "${script_dir}")
+
+# Build injector base image
+(cd "${project_dir}"; cargo build; docker build . -t otel-injector:latest)
+
+# Build Java apps
+(cd "${script_dir}/client"; ./mvnw clean package)
+(cd "${script_dir}/server"; ./mvnw clean package)
+
+# TODO Add trap to tear down docker-compose on interrupt
+(cd "${script_dir}"; docker-compose build; docker-compose up)

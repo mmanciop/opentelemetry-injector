@@ -26,7 +26,7 @@ use log::{debug, error, LevelFilter};
 use simple_logger::SimpleLogger;
 use std::{env,fmt,fs};
 use std::ffi::{CStr,CString};
-use std::io::Read;
+use std::fs::read_to_string;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Once;
@@ -102,8 +102,8 @@ hook! {
                 false => LevelFilter::Info,
             }).init().unwrap();
 
-            let configuration_file: &str = &(match configuration_file_option {
-                Some(path) => path.to_str().unwrap().to_string(),
+            let configuration_file_path: PathBuf = match configuration_file_option {
+                Some(path) => path,
                 None => {
                     let mut value: PathBuf = match so_location {
                         Some(path) => path,
@@ -114,34 +114,31 @@ hook! {
                     value.pop();
                     value.push("/etc/opentelemetry/injector/configuration.toml");
 
-                    value.to_str().unwrap().to_string()
+                    value
                 }
-            });
+            };
 
-            if IS_DEBUG {
-                debug!("Configuration file location: {}", configuration_file);
-            }
+            debug!("Configuration file location: {:?}", configuration_file_path);
 
-            let configuration: Configuration = match fs::File::open(configuration_file) {
-                Ok(mut file) => {
-                    let mut configuration_buffer = Vec::new();
-                    file.read_to_end(&mut configuration_buffer).unwrap();
-
-                    let configuration_content: &str = &String::from_utf8(configuration_buffer).unwrap();
-                    let configuration: Configuration = toml::from_str(configuration_content).unwrap();
+            let configuration: Configuration = match read_to_string(&configuration_file_path) {
+                /*
+                 * TODO Find out why the library hangs if the TOML file is malformed
+                 */
+                Ok(configuration_content) => {
+                    let configuration: Configuration = toml::from_str(&configuration_content).unwrap();
 
                     configuration
                 },
                 Err(error) => {
-                    if IS_DEBUG {
-                        debug!("Cannot open configuration file '{}': {}", configuration_file, error);
-                    }
+                    error!("Cannot open configuration file '{:?}': {}", configuration_file_path, error);
 
                     Configuration{
                         jvm: None
                     }
                 },
             };
+
+            debug!("Configuration parsed");
 
             JAVA_AGENT_PATH = match configuration.jvm {
                 Some(jvm) => {
@@ -157,7 +154,7 @@ hook! {
                     }
                 },
                 None => Err(JavaAgentNotSet),
-            }
+            };
         });
 
         let original_value = real!(getenv)(s);
@@ -171,17 +168,20 @@ hook! {
                     match JAVA_AGENT_PATH.as_ref() {
                         Ok(path) => {
                             if let Some(otel_javaagent_path) = path.to_str() {
+                                debug!("Injecting OpenTelemetry Java agent at: {}", otel_javaagent_path);
+
                                 let new_value = append_java_agent(&original_value, otel_javaagent_path);
                                 if let Ok(new_value) = CString::new(new_value) {
                                     let new_value = new_value.into_raw();
                                     // Prevent Rust from cleaning up the value, or the surrounding program will not be able to read it
                                     std::mem::forget(new_value);
+
                                     result_value = new_value;
                                 }            
                             }
                         },
                         Err(error) => {
-                            error!("Cannot inject JVM agent: {}", error);
+                            error!("Cannot inject OpenTelemetry Java agent: {}", error);
                         },
                     }
                 },
