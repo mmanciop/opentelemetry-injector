@@ -89,6 +89,12 @@ cargo build
 
 The `LD_PRELOAD` object is going to be available at `<repository_root>/target/debug/libopentelemetry_injector.so`.
 
+Alternatively, you can build inside Docker with:
+
+```sh
+docker build . -t opentelemetry-injector
+```
+
 ### Why Rust
 
 Why using [Rust](https://www.rust-lang.org/) for an `LD_PRELOAD` object, rather than something more traditional like C?
@@ -96,7 +102,8 @@ Well, Rust has very nice memory management and the [redhook](https://crates.io/c
 
 ## Limitations
 
-The runtime used by your applications needs to be dynamically linked to LibC for the `LD_PRELOAD` mechanic used in this project to work.
+1. The runtime used by your applications needs to be dynamically linked to glibc for the `LD_PRELOAD` mechanic used in this project to work.
+2. Due to the way rust shared libraries work, it seems not possible to create a build of the OpenTelemetry Injector that works across glibc and muslc.
 
 ## Support
 

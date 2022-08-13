@@ -1,9 +1,0 @@
-# Debian Package Builder
-
-The content of this directory is based on the [tsaarni/docker-deb-builder](https://github.com/tsaarni/docker-deb-builder) project.
-
-## Usage
-
-```sh
-./build
-```
