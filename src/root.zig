@@ -12,6 +12,8 @@ const node_js = @import("node_js.zig");
 const print = @import("print.zig");
 const res_attrs = @import("resource_attributes.zig");
 const types = @import("types.zig");
+const pattern_matcher = @import("patterns_matcher.zig");
+const args_parser = @import("args_parser.zig");
 
 const assert = std.debug.assert;
 const testing = std.testing;
@@ -36,6 +38,12 @@ var modified_otel_resource_attributes_value_calculated = false;
 var modified_otel_resource_attributes_value: ?types.NullTerminatedString = null;
 
 var custom_env_vars_are_injected = false;
+
+// Cache for executable path and command line arguments (processed once)
+var cached_executable_path_calculated = false;
+var cached_executable_path: []u8 = &[_]u8{};
+var cached_cmdline_args_calculated = false;
+var cached_cmdline_args: []const []const u8 = &[_][]const u8{};
 
 export fn getenv(name_z: types.NullTerminatedString) ?types.NullTerminatedString {
     const name = std.mem.sliceTo(name_z, 0);
@@ -81,6 +89,48 @@ fn getEnvValue(name: [:0]const u8, configuration: config.InjectorConfiguration) 
     }
 
     const original_value = std.posix.getenv(name);
+
+    const exe_path = getExecutablePath();
+    const args = getCommandLineArgs();
+
+    var allow = (configuration.include_paths.len == 0) or pattern_matcher.matchesAnyPattern(exe_path, configuration.include_paths);
+    allow = allow or (configuration.include_args.len == 0) or pattern_matcher.matchesManyAnyPattern(args, configuration.include_args);
+    var deny = (configuration.exclude_paths.len > 0) and pattern_matcher.matchesAnyPattern(exe_path, configuration.exclude_paths);
+    deny = deny or ((configuration.exclude_args.len > 0) and pattern_matcher.matchesManyAnyPattern(args, configuration.exclude_args));
+
+    if (!allow or deny) {
+        print.printDebug("executable with path {s} ignored. allow={any}, deny={any}", .{ exe_path, allow, deny });
+        if (print.isDebug()) {
+            if (configuration.include_paths.len > 0) {
+                print.printDebug("  include_paths:", .{});
+                for (configuration.include_paths) |pattern| {
+                    print.printDebug("    - {s}", .{pattern});
+                }
+            }
+            if (configuration.include_args.len > 0) {
+                print.printDebug("  include_arguments:", .{});
+                for (configuration.include_args) |pattern| {
+                    print.printDebug("    - {s}", .{pattern});
+                }
+            }
+            if (configuration.exclude_paths.len > 0) {
+                print.printDebug("  exclude_paths:", .{});
+                for (configuration.exclude_paths) |pattern| {
+                    print.printDebug("    - {s}", .{pattern});
+                }
+            }
+            if (configuration.exclude_args.len > 0) {
+                print.printDebug("  exclude_arguments:", .{});
+                for (configuration.exclude_args) |pattern| {
+                    print.printDebug("    - {s}", .{pattern});
+                }
+            }
+        }
+        if (original_value) |val| {
+            return val.ptr;
+        }
+        return null;
+    }
 
     if (std.mem.eql(
         u8,
@@ -246,4 +296,44 @@ fn countEnvironmentVariables(environment: [*:null]?[*:0]u8) usize {
         while (environment[count]) |_| : (count += 1) {}
     }
     return count;
+}
+
+fn getCommandLineArgs() []const []const u8 {
+    // Get command line arguments (cached after first read)
+    // Dynamically injected libraries don't get std.process.argsAlloc populated and
+    // neither does std.os.argv. We read using the /proc/{pid}/cmdline.
+    if (!cached_cmdline_args_calculated) {
+        cached_cmdline_args = args_parser.cmdLineForPID(alloc.page_allocator) catch |err| {
+            print.printDebug("failed to get executable arguments: {any}", .{err});
+            cached_cmdline_args = &[_][]const u8{};
+            cached_cmdline_args_calculated = true;
+            return cached_cmdline_args;
+        };
+        cached_cmdline_args_calculated = true;
+
+        if (print.isDebug()) {
+            for (cached_cmdline_args, 0..) |arg, i| {
+                print.printDebug("arg[{d}]: {s}", .{ i, arg });
+            }
+        }
+    }
+
+    return cached_cmdline_args;
+}
+
+fn getExecutablePath() []u8 {
+    if (!cached_executable_path_calculated) {
+        // Get the program full executable path
+        cached_executable_path = std.fs.selfExePathAlloc(alloc.page_allocator) catch |err| {
+            print.printDebug("failed to get executable path: {any}", .{err});
+            cached_executable_path_calculated = true;
+            cached_executable_path = &[_]u8{};
+            return cached_executable_path;
+        };
+
+        cached_executable_path_calculated = true;
+        print.printDebug("executable: {s}", .{cached_executable_path});
+    }
+
+    return cached_executable_path;
 }
