@@ -12,6 +12,7 @@ const testing = std.testing;
 const config_file_path = "/etc/opentelemetry/otelinject.conf";
 const max_line_length = 8192;
 const empty_string = @constCast("");
+const otel_env_var_prefix = "OTEL_";
 
 const dotnet_path_key = "dotnet_auto_instrumentation_agent_path_prefix";
 const jvm_path_key = "jvm_auto_instrumentation_agent_path";
@@ -381,6 +382,10 @@ fn readConfigurationFile(arena_allocator: std.mem.Allocator, cfg_file_path: []co
 }
 
 fn applyKeyValueToAllAgentsEnv(_: std.mem.Allocator, key: []const u8, value: []u8, _file_path: []const u8, _configuration: *InjectorConfiguration) void {
+    if (!std.mem.startsWith(u8, key, otel_env_var_prefix)) {
+        print.printWarn("environment variable {s} does not start with {s}. ignoring.", .{ key, otel_env_var_prefix });
+        return;
+    }
     _configuration.all_auto_instrumentation_agents_env_vars.put(key, value) catch |e| {
         print.printError("error storing environment variable {s} from file {s}: {}", .{ key, _file_path, e });
     };
