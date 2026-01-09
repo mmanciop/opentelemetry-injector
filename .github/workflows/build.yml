@@ -12,23 +12,16 @@ permissions:
   contents: read
 
 jobs:
-  build-package:
+  verify:
     runs-on: ${{ matrix.ARCH == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     strategy:
       matrix:
-        SYS_PACKAGE: [ "deb", "rpm" ]
         ARCH: [ "amd64", "arm64"]
     steps:
       - name: Check out the codebase.
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          fetch-depth: 0
 
       - uses: mlugg/setup-zig@fa65c4058643678a4e4a9a60513944a7d8d35440 # v2.1.0
-        with:
-          # maintenance note: This version needs to be kept in sync with the version referenced in the file /zig-version
-          # in the root of the repository.
-          version: 0.15.2
 
       - name: lint source code
         run: |
@@ -37,15 +30,37 @@ jobs:
       - name: Run Zig unit tests
         run: make zig-unit-tests ARCH=${{ matrix.ARCH }}
 
+      - name: Build binary
+        run: make dist ARCH=${{ matrix.ARCH }}
+
       - name: Run Injector integration tests
         run: make injector-integration-tests-for-one-architecture ARCH=${{ matrix.ARCH }}
 
-      # TODO I think we should split the build-package job at this point. Everything above is independent of SYS_PACKAGE.
-      # In particular the make injector-integration-tests-for-one-architecture ARCH=${{ matrix.ARCH }} step is not
-      # super cheap and right now we are running it twice for each CPU arch, once for deb and once for rpm, although
-      # it is independent of SYS_PACKAGE. The remaining steps below should be a separate job (named build-and-upload
-      # package) and the steps above should be a job named run-tests or verify or something like that.
-      # However, I'll leave that to a separate follow up PR.
+      - name: Upload binary
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: libotelinject-${{ matrix.ARCH }}
+          path: ./dist/*.so
+          if-no-files-found: error
+
+  build-package:
+    needs: verify
+    runs-on: ${{ matrix.ARCH == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    strategy:
+      matrix:
+        SYS_PACKAGE: [ "deb", "rpm" ]
+        ARCH: [ "amd64", "arm64"]
+    steps:
+      - name: Check out the codebase.
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Download binary
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: libotelinject-${{ matrix.ARCH }}
+          path: ./dist
 
       - name: Determine version
         id: github_tag
@@ -64,10 +79,12 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: otelinject-${{ matrix.ARCH }}-${{ matrix.SYS_PACKAGE }}
+          name: opentelemetry-injector-${{ matrix.ARCH }}-${{ matrix.SYS_PACKAGE }}
           path: ./instrumentation/dist/*.${{ matrix.SYS_PACKAGE }}
+          if-no-files-found: error
 
   packaging-integration-tests:
+    needs: build-package
     strategy:
       matrix:
         SYS_PACKAGE: [ "deb", "rpm" ]
@@ -82,17 +99,28 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
-      # TODO we currently build the RPM and DEB for at least once CPU architectures twice, once in the build-package job
-      # in the step "Build ${{ matrix.ARCH }} ${{ matrix.SYS_PACKAGE }} package", and once here in the context of
-      # running the packacking integration tests. We should run the packaging integration tests for both CPU
-      # architectures (instead of only amd64), but ideally only build each combination of CPU arch & SYS_PACKAGE once.
+
+      # The package integration tests do not actually need the binary, but the packaging-integration-test-... will
+      # implicitly call "make dist", downloading the binary makes sure we do not rebuild the binary.
+      - name: Download binary
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: libotelinject-${{ matrix.ARCH }}
+          path: ./dist
+
+      - name: Download package
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: opentelemetry-injector-${{ matrix.ARCH }}-${{ matrix.SYS_PACKAGE }}
+          path: ./instrumentation/dist
+
       - name: Run packaging integration tests for ${{ matrix.SYS_PACKAGE }}/${{ matrix.lang }}/${{ matrix.arch }}
-        run: ARCH=${{ matrix.arch }} make packaging-integration-test-${{ matrix.SYS_PACKAGE }}-${{ matrix.lang }}
+        run: make packaging-integration-test-${{ matrix.SYS_PACKAGE }}-${{ matrix.lang }} ARCH=${{ matrix.arch }}
 
   publish-stable:
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/') && github.repository == 'open-telemetry/opentelemetry-injector'
-    needs: build-package
+    needs: packaging-integration-tests
     permissions:
       contents: write
     steps:
