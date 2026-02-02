@@ -97,23 +97,41 @@ run_test_case() {
     fi
   fi
 
+  # Clean up config directory from previous test runs
+  rm -rf /etc/opentelemetry/injector
+  mkdir -p /etc/opentelemetry/injector/conf.d
+
   set +e
-  match=$(expr "$test_case_label" : ".*default configuration file.*")
+  match_default_config=$(expr "$test_case_label" : ".*default configuration file.*")
+  match_custom_location=$(expr "$test_case_label" : ".*configuration file at a custom location.*")
   set -e
-  if [ "$match" -gt 0 ]; then
-    echo "providing configuration file at default location /etc/opentelemetry/otelinject.conf for test case \"$test_case_label\""
-    cp otelinject.conf /etc/opentelemetry/otelinject.conf
+  if [ "$match_default_config" -gt 0 ]; then
+    # Tests with "default configuration file" in their name: provide a custom otelinject.conf
+    # and do NOT provide conf.d files (so the otelinject.conf paths are used)
+    echo "providing configuration file at default location /etc/opentelemetry/injector/otelinject.conf for test case \"$test_case_label\""
+    cp otelinject.conf /etc/opentelemetry/injector/otelinject.conf
+  elif [ "$match_custom_location" -gt 0 ]; then
+    # Tests with "configuration file at a custom location" in their name: do NOT provide
+    # conf.d files (so the custom config file paths are used via OTEL_INJECTOR_CONFIG_FILE)
+    echo "not providing conf.d files for test case \"$test_case_label\" (uses custom config location)"
+  else
+    # Regular tests: provide conf.d files to enable the default SDK paths
+    # (mirrors what happens when language packages are installed)
+    echo "providing conf.d files for test case \"$test_case_label\""
+    echo "dotnet_auto_instrumentation_agent_path_prefix=/usr/lib/opentelemetry/dotnet" > /etc/opentelemetry/injector/conf.d/dotnet.conf
+    echo "jvm_auto_instrumentation_agent_path=/usr/lib/opentelemetry/jvm/javaagent.jar" > /etc/opentelemetry/injector/conf.d/java.conf
+    echo "nodejs_auto_instrumentation_agent_path=/usr/lib/opentelemetry/nodejs/node_modules/@opentelemetry/auto-instrumentations-node/build/src/register.js" > /etc/opentelemetry/injector/conf.d/nodejs.conf
   fi
 
   set +e
   match=$(expr "$test_case_label" : ".*env file.*")
   set -e
   if [ "$match" -gt 0 ]; then
-    echo "providing env file at /etc/opentelemetry/default_auto_instrumentation_env.conf for test case \"$test_case_label\""
-    cp default_auto_instrumentation_env.conf /etc/opentelemetry/default_auto_instrumentation_env.conf
+    echo "providing env file at /etc/opentelemetry/injector/default_env.conf for test case \"$test_case_label\""
+    cp default_auto_instrumentation_env.conf /etc/opentelemetry/injector/default_env.conf
   else
-    echo "providing empty env file at /etc/opentelemetry/default_auto_instrumentation_env.conf for test case \"$test_case_label\""
-    touch /etc/opentelemetry/default_auto_instrumentation_env.conf
+    echo "providing empty env file at /etc/opentelemetry/injector/default_env.conf for test case \"$test_case_label\""
+    touch /etc/opentelemetry/injector/default_env.conf
   fi
 
   cd "$working_dir"
