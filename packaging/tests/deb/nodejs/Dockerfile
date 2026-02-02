@@ -15,8 +15,8 @@ RUN mkdir my_express_app && \
 RUN wget https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.128.0/otelcol-contrib_0.128.0_linux_${ARCH}.deb
 RUN dpkg -i otelcol-contrib_0.128.0_linux_${ARCH}.deb
 
-COPY instrumentation/dist/opentelemetry-injector_*_${ARCH}.deb injector.deb
-COPY instrumentation/dist/opentelemetry-nodejs-autoinstrumentation_*_all.deb nodejs-agent.deb
+COPY build/packages/opentelemetry-injector_*_${ARCH}.deb injector.deb
+COPY build/packages/opentelemetry-nodejs-autoinstrumentation_*_all.deb nodejs-agent.deb
 
 RUN dpkg -i injector.deb nodejs-agent.deb
 

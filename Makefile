@@ -5,7 +5,7 @@ DIST_DIR_BINARY:=dist
 BINARY_NAME_PREFIX:=libotelinject
 BINARY_NAME_NO_ARCH:=$(BINARY_NAME_PREFIX).so
 BINARY_NAME:=$(BINARY_NAME_PREFIX)_$(ARCH).so
-DIST_DIR_PACKAGE:=instrumentation/dist
+DIST_DIR_PACKAGE:=build/packages
 PACKAGE_NAME:=opentelemetry-injector
 
 # Docker repository used.
@@ -243,7 +243,7 @@ fpm-docker-image:
 	docker build -t instrumentation-fpm packaging/common/fpm
 
 # Generic function to build a modular package
-# Output directory: instrumentation/dist (same as legacy for compatibility)
+# Output directory: build/packages (same as legacy for compatibility)
 define build_modular_package
 $(eval $@_PKG_TYPE = $(1))
 $(eval $@_PKG_NAME = $(2))

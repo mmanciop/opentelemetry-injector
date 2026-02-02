@@ -17,7 +17,7 @@ PKG_DESCRIPTION="OpenTelemetry Java Auto-Instrumentation Agent"
 
 VERSION="${1:-}"
 ARCH="${2:-amd64}"
-OUTPUT_DIR="${3:-$REPO_DIR/instrumentation/dist}"
+OUTPUT_DIR="${3:-$REPO_DIR/build/packages}"
 
 if [[ -z "$VERSION" ]]; then
     VERSION="$( get_version )"

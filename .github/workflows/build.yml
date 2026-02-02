@@ -80,7 +80,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: opentelemetry-packages-${{ matrix.ARCH }}-${{ matrix.SYS_PACKAGE }}
-          path: ./instrumentation/dist/*.${{ matrix.SYS_PACKAGE }}
+          path: ./build/packages/*.${{ matrix.SYS_PACKAGE }}
           if-no-files-found: error
 
   packaging-integration-tests:
@@ -112,7 +112,7 @@ jobs:
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: opentelemetry-packages-${{ matrix.arch }}-${{ matrix.SYS_PACKAGE }}
-          path: ./instrumentation/dist
+          path: ./build/packages
 
       - name: Run packaging integration tests for ${{ matrix.SYS_PACKAGE }}/${{ matrix.lang }}/${{ matrix.arch }}
         run: make packaging-integration-test-${{ matrix.SYS_PACKAGE }}-${{ matrix.lang }} ARCH=${{ matrix.arch }}

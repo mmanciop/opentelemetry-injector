@@ -23,8 +23,8 @@ RUN dnf -y update && \
 RUN wget https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.128.0/otelcol-contrib_0.128.0_linux_${ARCH}.rpm
 RUN rpm -i otelcol-contrib_0.128.0_linux_${ARCH}.rpm
 
-COPY instrumentation/dist/opentelemetry-injector-*-1.${RPM_ARCH}.rpm injector.rpm
-COPY instrumentation/dist/opentelemetry-dotnet-autoinstrumentation-*-1.${RPM_ARCH}.rpm dotnet-agent.rpm
+COPY build/packages/opentelemetry-injector-*-1.${RPM_ARCH}.rpm injector.rpm
+COPY build/packages/opentelemetry-dotnet-autoinstrumentation-*-1.${RPM_ARCH}.rpm dotnet-agent.rpm
 
 RUN rpm -i injector.rpm dotnet-agent.rpm
 
