@@ -16,7 +16,6 @@ PKG_NAME="opentelemetry"
 PKG_DESCRIPTION="OpenTelemetry Auto-Instrumentation Suite (metapackage)"
 
 VERSION="${1:-}"
-ARCH="${2:-amd64}"
 OUTPUT_DIR="${3:-$REPO_DIR/build/packages}"
 
 if [[ -z "$VERSION" ]]; then
