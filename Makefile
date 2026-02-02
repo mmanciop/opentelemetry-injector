@@ -253,3 +253,117 @@ packaging-integration-test-deb-%: deb-package
 .PHONY: packaging-integration-test-rpm
 packaging-integration-test-rpm-%: rpm-package
 	(cd packaging/tests/rpm/$* && ARCH=$(ARCH) ./run.sh)
+
+# ============================================================================
+# Modular Package Targets (OTEP #4793 compliant)
+# ============================================================================
+# These targets build individual packages following the OTEP #4793 specification.
+# Package names:
+#   - opentelemetry-injector: LD_PRELOAD injector
+#   - opentelemetry-java-autoinstrumentation: Java agent
+#   - opentelemetry-nodejs-autoinstrumentation: Node.js agent
+#   - opentelemetry-dotnet-autoinstrumentation: .NET agent
+#   - opentelemetry: Meta-package (depends on all above)
+
+# Common source files for modular packages
+MODULAR_PACKAGE_SRCS:=\
+	$(DIST_SRCS) \
+	$(wildcard packaging/*-release.txt) \
+	$(wildcard packaging/common/**/*) \
+	$(wildcard packaging/deb/**/*) \
+	$(wildcard packaging/rpm/**/*) \
+	$(wildcard packaging/fpm/*.*)
+
+# Build the FPM Docker image
+.PHONY: fpm-docker-image
+fpm-docker-image:
+	docker build -t instrumentation-fpm packaging/fpm
+
+# Generic function to build a modular package
+# Output directory: dist/<pkg_type>/<arch> (e.g., dist/deb/amd64)
+define build_modular_package
+$(eval $@_PKG_TYPE = $(1))
+$(eval $@_PKG_NAME = $(2))
+$(eval $@_VERSION = $(3))
+$(eval $@_OUTPUT_DIR = $(DIST_DIR_BINARY)/$($@_PKG_TYPE)/$(ARCH))
+@echo "Building modular $($@_PKG_TYPE) package: $($@_PKG_NAME) version $($@_VERSION) for $(ARCH)"
+@mkdir -p $($@_OUTPUT_DIR)
+docker rm -f libotelinject-packager 2>/dev/null || true
+docker run -d --name libotelinject-packager --rm -v $(CURDIR):/repo -e VERSION=$($@_VERSION) -e ARCH=$(ARCH) instrumentation-fpm sleep inf
+docker exec libotelinject-packager ./packaging/$($@_PKG_TYPE)/$($@_PKG_NAME)/build.sh "$($@_VERSION)" "$(ARCH)" "/repo/$($@_OUTPUT_DIR)"
+docker rm -f libotelinject-packager 2>/dev/null
+endef
+
+# ============================================================================
+# DEB Package Targets
+# ============================================================================
+
+# Individual DEB packages
+.PHONY: deb-package-injector
+deb-package-injector: dist fpm-docker-image
+	@$(call build_modular_package,deb,injector,$(VERSION))
+
+.PHONY: deb-package-java
+deb-package-java: fpm-docker-image
+	@$(call build_modular_package,deb,java,$(VERSION))
+
+.PHONY: deb-package-nodejs
+deb-package-nodejs: fpm-docker-image
+	@$(call build_modular_package,deb,nodejs,$(VERSION))
+
+.PHONY: deb-package-dotnet
+deb-package-dotnet: fpm-docker-image
+	@$(call build_modular_package,deb,dotnet,$(VERSION))
+
+.PHONY: deb-package-meta
+deb-package-meta: fpm-docker-image
+	@$(call build_modular_package,deb,meta,$(VERSION))
+
+.PHONY: deb-packages
+deb-packages: deb-package-injector deb-package-java deb-package-nodejs deb-package-dotnet deb-package-meta
+	@echo "All modular DEB packages built successfully"
+
+# ============================================================================
+# RPM Package Targets
+# ============================================================================
+
+# Individual RPM packages
+.PHONY: rpm-package-injector
+rpm-package-injector: dist fpm-docker-image
+	@$(call build_modular_package,rpm,injector,$(RPM_VERSION))
+
+.PHONY: rpm-package-java
+rpm-package-java: fpm-docker-image
+	@$(call build_modular_package,rpm,java,$(RPM_VERSION))
+
+.PHONY: rpm-package-nodejs
+rpm-package-nodejs: fpm-docker-image
+	@$(call build_modular_package,rpm,nodejs,$(RPM_VERSION))
+
+.PHONY: rpm-package-dotnet
+rpm-package-dotnet: fpm-docker-image
+	@$(call build_modular_package,rpm,dotnet,$(RPM_VERSION))
+
+.PHONY: rpm-package-meta
+rpm-package-meta: fpm-docker-image
+	@$(call build_modular_package,rpm,meta,$(RPM_VERSION))
+
+.PHONY: rpm-packages
+rpm-packages: rpm-package-injector rpm-package-java rpm-package-nodejs rpm-package-dotnet rpm-package-meta
+	@echo "All modular RPM packages built successfully"
+
+.PHONY: packages
+packages: deb-packages rpm-packages
+	@echo "All packages built successfully"
+
+# ============================================================================
+# Integration Tests for Modular Packages
+# ============================================================================
+
+.PHONY: packaging-integration-test-modular-deb
+packaging-integration-test-modular-deb-%: deb-packages
+	(cd packaging/tests/deb/$* && ARCH=$(ARCH) ./run.sh)
+
+.PHONY: packaging-integration-test-modular-rpm
+packaging-integration-test-modular-rpm-%: rpm-packages
+	(cd packaging/tests/rpm/$* && ARCH=$(ARCH) ./run.sh)

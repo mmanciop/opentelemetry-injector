@@ -9,7 +9,7 @@ const patterns_util = @import("patterns_util.zig");
 
 const testing = std.testing;
 
-const default_config_file_path = "/etc/opentelemetry/otelinject.conf";
+const default_config_file_path = "/etc/opentelemetry/injector/otelinject.conf";
 const config_file_path_env_var = "OTEL_INJECTOR_CONFIG_FILE";
 const max_line_length = 8192;
 const empty_string = @constCast("");
@@ -70,10 +70,10 @@ pub const InjectorConfiguration = struct {
 const ConfigApplier = fn (gpa: std.mem.Allocator, key: []const u8, value: []u8, file_path: []const u8, configuration: *InjectorConfiguration) void;
 
 const default_dotnet_auto_instrumentation_agent_path_prefix = "/usr/lib/opentelemetry/dotnet";
-const default_jvm_auto_instrumentation_agent_path = "/usr/lib/opentelemetry/jvm/javaagent.jar";
+const default_jvm_auto_instrumentation_agent_path = "/usr/lib/opentelemetry/java/opentelemetry-javaagent.jar";
 const default_nodejs_auto_instrumentation_agent_path = "/usr/lib/opentelemetry/nodejs/node_modules/@opentelemetry/auto-instrumentations-node/build/src/register.js";
 
-const default_all_auto_instrumentation_agents_env_path = "/etc/opentelemetry/default_auto_instrumentation_env.conf";
+const default_all_auto_instrumentation_agents_env_path = "/etc/opentelemetry/injector/default_env.conf";
 
 var cached_configuration_optional: ?InjectorConfiguration = null;
 
