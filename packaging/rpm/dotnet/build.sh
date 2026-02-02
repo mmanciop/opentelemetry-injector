@@ -37,7 +37,7 @@ setup_dotnet_buildroot "$ARCH" "$VERSION" "$buildroot"
 mkdir -p "$OUTPUT_DIR"
 
 # .NET agent binaries are architecture-specific
-sudo fpm -s dir -t rpm -n "$PKG_NAME" -v "$VERSION" -f -p "$OUTPUT_DIR" \
+fpm -s dir -t rpm -n "$PKG_NAME" -v "$VERSION" -f -p "$OUTPUT_DIR" \
     --vendor "$PKG_VENDOR" \
     --maintainer "$PKG_MAINTAINER" \
     --description "$PKG_DESCRIPTION" \

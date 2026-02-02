@@ -30,11 +30,12 @@ RUN apt-get install -y dotnet-runtime-9.0 dotnet-sdk-9.0
 RUN wget https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.128.0/otelcol-contrib_0.128.0_linux_${ARCH}.deb
 RUN dpkg -i otelcol-contrib_0.128.0_linux_${ARCH}.deb
 
-COPY instrumentation/dist/*${ARCH}.deb injector.deb
+COPY instrumentation/dist/opentelemetry-injector_*_${ARCH}.deb injector.deb
+COPY instrumentation/dist/opentelemetry-dotnet-autoinstrumentation_*_${ARCH}.deb dotnet-agent.deb
 
-RUN dpkg -i injector.deb
+RUN dpkg -i injector.deb dotnet-agent.deb
 
-RUN echo /usr/lib/opentelemetry/libotelinject.so >> /etc/ld.so.preload
+RUN echo /usr/lib/opentelemetry/injector/libotelinject.so >> /etc/ld.so.preload
 
 COPY --from=publish /app/publish .
 COPY packaging/tests/shared/dotnet/test.sh test.sh

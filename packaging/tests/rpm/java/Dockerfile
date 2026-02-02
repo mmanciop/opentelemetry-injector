@@ -17,11 +17,12 @@ RUN tar xzvf apache-tomcat.tar.gz && mv apache-tomcat-10.* apache-tomcat
 ADD https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.128.0/otelcol-contrib_0.128.0_linux_${ARCH}.rpm otelcol-contrib_0.128.0_linux_${ARCH}.rpm
 RUN rpm -i otelcol-contrib_0.128.0_linux_${ARCH}.rpm
 
-COPY instrumentation/dist/*${RPM_ARCH}.rpm injector.rpm
+COPY instrumentation/dist/opentelemetry-injector-*-1.${RPM_ARCH}.rpm injector.rpm
+COPY instrumentation/dist/opentelemetry-java-autoinstrumentation-*-1.noarch.rpm java-agent.rpm
 
-RUN rpm -i injector.rpm
+RUN rpm -i injector.rpm java-agent.rpm
 
-RUN echo /usr/lib/opentelemetry/libotelinject.so >> /etc/ld.so.preload
+RUN echo /usr/lib/opentelemetry/injector/libotelinject.so >> /etc/ld.so.preload
 
 COPY packaging/tests/shared/java/test.sh test.sh
 

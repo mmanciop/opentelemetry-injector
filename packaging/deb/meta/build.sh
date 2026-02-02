@@ -37,7 +37,7 @@ mkdir -p "${buildroot}/usr/share/doc/${PKG_NAME}"
 echo "OpenTelemetry Auto-Instrumentation Suite" > "${buildroot}/usr/share/doc/${PKG_NAME}/README"
 chown -R root:root "$buildroot"
 
-sudo fpm -s dir -t deb -n "$PKG_NAME" -v "$VERSION" -f -p "$OUTPUT_DIR" \
+fpm -s dir -t deb -n "$PKG_NAME" -v "$VERSION" -f -p "$OUTPUT_DIR" \
     --vendor "$PKG_VENDOR" \
     --maintainer "$PKG_MAINTAINER" \
     --description "$PKG_DESCRIPTION" \

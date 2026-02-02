@@ -34,7 +34,7 @@ setup_nodejs_buildroot "$ARCH" "$VERSION" "$buildroot"
 mkdir -p "$OUTPUT_DIR"
 
 # Node.js packages are architecture-independent
-sudo fpm -s dir -t deb -n "$PKG_NAME" -v "$VERSION" -f -p "$OUTPUT_DIR" \
+fpm -s dir -t deb -n "$PKG_NAME" -v "$VERSION" -f -p "$OUTPUT_DIR" \
     --vendor "$PKG_VENDOR" \
     --maintainer "$PKG_MAINTAINER" \
     --description "$PKG_DESCRIPTION" \

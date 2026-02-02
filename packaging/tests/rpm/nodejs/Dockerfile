@@ -19,11 +19,12 @@ RUN mkdir my_express_app && \
 RUN wget https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.128.0/otelcol-contrib_0.128.0_linux_${ARCH}.rpm
 RUN rpm -i otelcol-contrib_0.128.0_linux_${ARCH}.rpm
 
-COPY instrumentation/dist/*${RPM_ARCH}.rpm injector.rpm
+COPY instrumentation/dist/opentelemetry-injector-*-1.${RPM_ARCH}.rpm injector.rpm
+COPY instrumentation/dist/opentelemetry-nodejs-autoinstrumentation-*-1.noarch.rpm nodejs-agent.rpm
 
-RUN rpm -i injector.rpm
+RUN rpm -i injector.rpm nodejs-agent.rpm
 
-RUN echo /usr/lib/opentelemetry/libotelinject.so >> /etc/ld.so.preload
+RUN echo /usr/lib/opentelemetry/injector/libotelinject.so >> /etc/ld.so.preload
 
 COPY packaging/tests/shared/nodejs/app.js my_express_app/app.js
 COPY packaging/tests/shared/nodejs/test.sh test.sh

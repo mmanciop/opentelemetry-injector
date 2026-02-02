@@ -12,7 +12,6 @@ DEB_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PACKAGING_DIR="$( cd "$DEB_DIR/.." && pwd )"
 REPO_DIR="$( cd "$PACKAGING_DIR/.." && pwd )"
 COMMON_DIR="$PACKAGING_DIR/common"
-FPM_DIR="$PACKAGING_DIR/fpm"
 
 # Package metadata
 PKG_VENDOR="OpenTelemetry"

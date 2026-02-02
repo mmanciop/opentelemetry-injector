@@ -20,28 +20,12 @@ DIST_SRCS:=\
 
 DIST_TARGET:=$(DIST_DIR_BINARY)/$(BINARY_NAME)
 
-COMMON_PACKAGE_SRCS:=\
-  $(DIST_SRCS) \
-	$(wildcard packaging/*-release.txt) \
-	$(wildcard packaging/fpm/*.*) \
-	$(wildcard packaging/fpm/etc/*.*) \
-	$(wildcard packaging/fpm/etc/**/*.*)
-
-DEB_PACKAGE_SRCS:=\
-	$(COMMON_PACKAGE_SRCS) \
-	$(wildcard packaging/fpm/deb/*.*)
-DEB_PACKAGE_TARGET:=$(DIST_DIR_PACKAGE)/$(PACKAGE_NAME)_$(VERSION)_$(ARCH).deb
-
-RPM_PACKAGE_SRCS:=\
-	$(COMMON_PACKAGE_SRCS) \
-	$(wildcard packaging/fpm/rpm/*.*)
 ifeq ($(ARCH),arm64)
   RPM_PACKAGE_ARCH:=aarch64
 else
   RPM_PACKAGE_ARCH:=x86_64
 endif
 RPM_VERSION=$(subst -,_,$(VERSION))
-RPM_PACKAGE_TARGET := $(DIST_DIR_PACKAGE)/$(PACKAGE_NAME)-$(RPM_VERSION)-1.$(RPM_PACKAGE_ARCH).rpm
 
 .PHONY: all
 all: so/$(BINARY_NAME_NO_ARCH)
@@ -79,31 +63,10 @@ $(DIST_TARGET): $(DIST_SRCS)
 dist: $(DIST_TARGET)
 
 .PHONY: deb-package
-deb-package: $(DEB_PACKAGE_TARGET)
+deb-package: deb-packages
 
 .PHONY: rpm-package
-rpm-package: $(RPM_PACKAGE_TARGET)
-
-$(DEB_PACKAGE_TARGET): $(DEB_PACKAGE_SRCS)
-	$(MAKE) dist
-	@$(call build_package,deb,$(VERSION))
-
-$(RPM_PACKAGE_TARGET): $(RPM_PACKAGE_SRCS)
-	$(MAKE) dist
-	@$(call build_package,rpm,$(RPM_VERSION))
-
-define build_package
-$(eval $@_SYS_PACKAGE = $(1))
-$(eval $@_VERSION = $(2))
-@echo building the injector package for architecture $(ARCH) and system package type $($@_SYS_PACKAGE)
-@mkdir -p $(DIST_DIR_PACKAGE)
-docker build -t instrumentation-fpm packaging/fpm
-docker rm -f libotelinject-packager 2>/dev/null || true
-docker run -d --name libotelinject-packager --rm -v $(CURDIR):/repo -e PACKAGE=$* -e VERSION=$($@_VERSION) -e ARCH=$(ARCH) instrumentation-fpm sleep inf
-docker exec libotelinject-packager ./packaging/fpm/$($@_SYS_PACKAGE)/build.sh "$($@_VERSION)" "$(ARCH)" "/repo/$(DIST_DIR_PACKAGE)"
-docker cp --quiet libotelinject-packager:/repo/$(DIST_DIR_PACKAGE)/. $(DIST_DIR_PACKAGE)
-docker rm -f libotelinject-packager 2>/dev/null
-endef
+rpm-package: rpm-packages
 
 # Run this to install and enable the auto-instrumentation files. Mostly intended for development.
 .PHONY: install
@@ -265,32 +228,31 @@ packaging-integration-test-rpm-%: rpm-package
 #   - opentelemetry-dotnet-autoinstrumentation: .NET agent
 #   - opentelemetry: Meta-package (depends on all above)
 
-# Common source files for modular packages
-MODULAR_PACKAGE_SRCS:=\
+# Common source files for packages
+PACKAGE_SRCS:=\
 	$(DIST_SRCS) \
 	$(wildcard packaging/*-release.txt) \
 	$(wildcard packaging/common/**/*) \
 	$(wildcard packaging/deb/**/*) \
 	$(wildcard packaging/rpm/**/*) \
-	$(wildcard packaging/fpm/*.*)
+	$(wildcard packaging/common/fpm/*)
 
 # Build the FPM Docker image
 .PHONY: fpm-docker-image
 fpm-docker-image:
-	docker build -t instrumentation-fpm packaging/fpm
+	docker build -t instrumentation-fpm packaging/common/fpm
 
 # Generic function to build a modular package
-# Output directory: dist/<pkg_type>/<arch> (e.g., dist/deb/amd64)
+# Output directory: instrumentation/dist (same as legacy for compatibility)
 define build_modular_package
 $(eval $@_PKG_TYPE = $(1))
 $(eval $@_PKG_NAME = $(2))
 $(eval $@_VERSION = $(3))
-$(eval $@_OUTPUT_DIR = $(DIST_DIR_BINARY)/$($@_PKG_TYPE)/$(ARCH))
 @echo "Building modular $($@_PKG_TYPE) package: $($@_PKG_NAME) version $($@_VERSION) for $(ARCH)"
-@mkdir -p $($@_OUTPUT_DIR)
+@mkdir -p $(DIST_DIR_PACKAGE)
 docker rm -f libotelinject-packager 2>/dev/null || true
 docker run -d --name libotelinject-packager --rm -v $(CURDIR):/repo -e VERSION=$($@_VERSION) -e ARCH=$(ARCH) instrumentation-fpm sleep inf
-docker exec libotelinject-packager ./packaging/$($@_PKG_TYPE)/$($@_PKG_NAME)/build.sh "$($@_VERSION)" "$(ARCH)" "/repo/$($@_OUTPUT_DIR)"
+docker exec libotelinject-packager ./packaging/$($@_PKG_TYPE)/$($@_PKG_NAME)/build.sh "$($@_VERSION)" "$(ARCH)" "/repo/$(DIST_DIR_PACKAGE)"
 docker rm -f libotelinject-packager 2>/dev/null
 endef
 
@@ -356,14 +318,3 @@ rpm-packages: rpm-package-injector rpm-package-java rpm-package-nodejs rpm-packa
 packages: deb-packages rpm-packages
 	@echo "All packages built successfully"
 
-# ============================================================================
-# Integration Tests for Modular Packages
-# ============================================================================
-
-.PHONY: packaging-integration-test-modular-deb
-packaging-integration-test-modular-deb-%: deb-packages
-	(cd packaging/tests/deb/$* && ARCH=$(ARCH) ./run.sh)
-
-.PHONY: packaging-integration-test-modular-rpm
-packaging-integration-test-modular-rpm-%: rpm-packages
-	(cd packaging/tests/rpm/$* && ARCH=$(ARCH) ./run.sh)
