@@ -45,7 +45,7 @@ fpm -s dir -t deb -n "$PKG_NAME" -v "$VERSION" -f -p "$OUTPUT_DIR" \
     --deb-use-file-permissions \
     --deb-no-default-config-files \
     --depends "opentelemetry-injector (>= ${VERSION})" \
-    --deb-recommends "default-jre" \
+    --deb-suggests "default-jre" \
     --config-files "$JAVA_CONFIG_DIR" \
     "$buildroot/"=/
 

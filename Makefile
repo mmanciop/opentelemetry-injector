@@ -38,7 +38,7 @@ obj:
 
 .PHONY: clean
 clean:
-	rm -rf so $(DIST_DIR_BINARY) $(DIST_DIR_PACKAGE) zig-out .zig-cache
+	rm -rf so $(DIST_DIR_BINARY) $(DIST_DIR_PACKAGE) zig-out .zig-cache build
 
 so/$(BINARY_NAME_NO_ARCH): so
 	zig build -Dcpu-arch=${ARCH} --prominent-compile-errors --summary none
@@ -317,4 +317,62 @@ rpm-packages: rpm-package-injector rpm-package-java rpm-package-nodejs rpm-packa
 .PHONY: packages
 packages: deb-packages rpm-packages
 	@echo "All packages built successfully"
+
+# ============================================================================
+# Local Package Repositories for Testing
+# ============================================================================
+# These targets create local APT and RPM repositories that can be mounted
+# into containers for testing package installation.
+
+LOCAL_REPO_DIR := $(CURDIR)/build/local-repo
+
+.PHONY: local-apt-repo
+local-apt-repo: deb-packages
+	@echo "Creating local APT repository in $(LOCAL_REPO_DIR)/apt"
+	@mkdir -p $(LOCAL_REPO_DIR)/apt/pool
+	@cp $(DIST_DIR_PACKAGE)/*.deb $(LOCAL_REPO_DIR)/apt/pool/
+	@docker run --rm --platform linux/amd64 -v $(LOCAL_REPO_DIR)/apt:/repo -w /repo debian:12 bash -c '\
+		apt-get update -qq && apt-get install -y -qq dpkg-dev && \
+		mkdir -p dists/stable/main/binary-amd64 && \
+		dpkg-scanpackages pool > dists/stable/main/binary-amd64/Packages && \
+		gzip -kf dists/stable/main/binary-amd64/Packages && \
+		printf "Origin: OpenTelemetry Local\nLabel: OpenTelemetry Local Repository\nSuite: stable\nCodename: stable\nArchitectures: amd64 all\nComponents: main\n" > dists/stable/Release \
+	'
+	@echo ""
+	@echo "APT repository created at $(LOCAL_REPO_DIR)/apt"
+	@echo ""
+	@echo "To test in a container:"
+	@echo "  docker run --platform linux/amd64 -v $(LOCAL_REPO_DIR)/apt:/local-repo -it debian:12 bash"
+	@echo ""
+	@echo "Then inside the container:"
+	@echo "  echo 'deb [trusted=yes] file:///local-repo stable main' > /etc/apt/sources.list.d/local.list"
+	@echo "  apt-get update"
+	@echo "  apt-get install opentelemetry-injector opentelemetry-java-autoinstrumentation"
+
+.PHONY: local-rpm-repo
+local-rpm-repo: rpm-packages
+	@echo "Creating local RPM repository in $(LOCAL_REPO_DIR)/rpm"
+	@mkdir -p $(LOCAL_REPO_DIR)/rpm/packages
+	@cp $(DIST_DIR_PACKAGE)/*.rpm $(LOCAL_REPO_DIR)/rpm/packages/
+	@docker run --rm --platform linux/amd64 -v $(LOCAL_REPO_DIR)/rpm:/repo -w /repo fedora:41 bash -c '\
+		dnf install -y -q createrepo_c && \
+		createrepo_c /repo/packages \
+	'
+	@echo ""
+	@echo "RPM repository created at $(LOCAL_REPO_DIR)/rpm"
+	@echo ""
+	@echo "To test in a container:"
+	@echo "  docker run --platform linux/amd64 -v $(LOCAL_REPO_DIR)/rpm:/local-repo -it fedora:41 bash"
+	@echo ""
+	@echo "Then inside the container:"
+	@echo "  echo -e '[local]\nname=Local\nbaseurl=file:///local-repo/packages\nenabled=1\ngpgcheck=0' > /etc/yum.repos.d/local.repo"
+	@echo "  dnf install opentelemetry-injector opentelemetry-java-autoinstrumentation"
+
+.PHONY: local-repos
+local-repos: local-apt-repo local-rpm-repo
+	@echo "All local repositories created in $(LOCAL_REPO_DIR)"
+
+.PHONY: clean-local-repos
+clean-local-repos:
+	rm -rf $(LOCAL_REPO_DIR)
 
