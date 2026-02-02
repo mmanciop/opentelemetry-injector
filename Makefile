@@ -331,13 +331,10 @@ local-apt-repo: deb-packages
 	@echo "Creating local APT repository in $(LOCAL_REPO_DIR)/apt"
 	@mkdir -p $(LOCAL_REPO_DIR)/apt/pool
 	@cp $(DIST_DIR_PACKAGE)/*.deb $(LOCAL_REPO_DIR)/apt/pool/
-	@docker run --rm --platform linux/amd64 -v $(LOCAL_REPO_DIR)/apt:/repo -w /repo debian:12 bash -c '\
-		apt-get update -qq && apt-get install -y -qq dpkg-dev && \
-		mkdir -p dists/stable/main/binary-amd64 && \
-		dpkg-scanpackages pool > dists/stable/main/binary-amd64/Packages && \
-		gzip -kf dists/stable/main/binary-amd64/Packages && \
-		printf "Origin: OpenTelemetry Local\nLabel: OpenTelemetry Local Repository\nSuite: stable\nCodename: stable\nArchitectures: amd64 all\nComponents: main\n" > dists/stable/Release \
-	'
+	@docker run --rm --platform linux/amd64 \
+		-v $(LOCAL_REPO_DIR)/apt:/repo \
+		-v $(CURDIR)/packaging/repo:/scripts:ro \
+		debian:12 /scripts/generate-apt-repo.sh /repo
 	@echo ""
 	@echo "APT repository created at $(LOCAL_REPO_DIR)/apt"
 	@echo ""
@@ -354,10 +351,10 @@ local-rpm-repo: rpm-packages
 	@echo "Creating local RPM repository in $(LOCAL_REPO_DIR)/rpm"
 	@mkdir -p $(LOCAL_REPO_DIR)/rpm/packages
 	@cp $(DIST_DIR_PACKAGE)/*.rpm $(LOCAL_REPO_DIR)/rpm/packages/
-	@docker run --rm --platform linux/amd64 -v $(LOCAL_REPO_DIR)/rpm:/repo -w /repo fedora:41 bash -c '\
-		dnf install -y -q createrepo_c && \
-		createrepo_c /repo/packages \
-	'
+	@docker run --rm --platform linux/amd64 \
+		-v $(LOCAL_REPO_DIR)/rpm:/repo \
+		-v $(CURDIR)/packaging/repo:/scripts:ro \
+		fedora:41 /scripts/generate-rpm-repo.sh /repo
 	@echo ""
 	@echo "RPM repository created at $(LOCAL_REPO_DIR)/rpm"
 	@echo ""
