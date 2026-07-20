@@ -1,4 +1,4 @@
-change_type: enhancement
+change_type: breaking
 component: injector
 note: fake entry for end-to-end verification of the auto bump path
 issues: [380]
