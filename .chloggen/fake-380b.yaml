@@ -1,0 +1,4 @@
+change_type: bug_fix
+component: injector
+note: another fake entry for end-to-end verification
+issues: [380]
